@@ -56,17 +56,20 @@ public class TestForgeService {
     private final BugTriageService triage;
     private final GoogleCloudStorageService storage;
     private final SimpMessagingTemplate messaging;
+    private final com.omniqa.studio.aitest.GeminiClient gemini;
     private final ObjectMapper mapper = new ObjectMapper();
     private final RestClient restClient = RestClient.builder().build();
 
     public TestForgeService(TestRunRepository testRuns, BugReportRepository bugs,
                             BugTriageService triage, GoogleCloudStorageService storage,
-                            SimpMessagingTemplate messaging) {
+                            SimpMessagingTemplate messaging,
+                            com.omniqa.studio.aitest.GeminiClient gemini) {
         this.testRuns = testRuns;
         this.bugs = bugs;
         this.triage = triage;
         this.storage = storage;
         this.messaging = messaging;
+        this.gemini = gemini;
     }
 
     // ---------------- Code generation ----------------
@@ -75,6 +78,13 @@ public class TestForgeService {
         String testName = safe(req.getTestName(), "ForgeTest");
         String url = safe(req.getUrl(), "https://example.com");
         String requirements = safe(req.getRequirements(), "smoke test the page");
+        if (gemini.isConfigured()) {
+            try {
+                return callGemini(testName, url, requirements, req.getSteps());
+            } catch (Exception ex) {
+                logger.warn("Forge Gemini failed, trying OpenAI: {}", ex.getMessage());
+            }
+        }
         if (StringUtils.hasText(apiKey)) {
             try {
                 return callLlm(testName, url, requirements, req.getSteps());
@@ -83,6 +93,21 @@ public class TestForgeService {
             }
         }
         return templateCode(testName, url, requirements, req.getSteps());
+    }
+
+    private String callGemini(String testName, String url, String requirements, List<ForgeStep> steps) {
+        StringBuilder sb = new StringBuilder();
+        sb.append("You are a senior Selenium automation engineer. Output compilable Java only.\n");
+        sb.append("Generate a complete, runnable Java 21 TestNG + Selenium 4 test class named ").append(testName).append(".\n");
+        sb.append("Target URL: ").append(url).append("\n");
+        sb.append("Requirement (plain words): ").append(requirements).append("\n");
+        if (steps != null && !steps.isEmpty()) {
+            sb.append("Exact steps to encode:\n");
+            for (ForgeStep s : steps) sb.append("- ").append(s.getAction()).append(" | selector=").append(s.getSelector()).append(" | value=").append(s.getValue()).append("\n");
+        }
+        sb.append("Rules: headless Chrome via WebDriverManager, explicit WebDriverWait, TestNG asserts, screenshot on failure to target/screenshots, quit driver in @AfterClass. Return ONLY raw Java code, no markdown.");
+        String code = gemini.generate(sb.toString(), 0.2);
+        return code.replaceAll("(?s)```java|```", "").trim();
     }
 
     private String callLlm(String testName, String url, String requirements, List<ForgeStep> steps) throws Exception {

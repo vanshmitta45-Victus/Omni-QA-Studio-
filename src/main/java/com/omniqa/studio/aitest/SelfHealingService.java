@@ -4,15 +4,17 @@ import org.springframework.stereotype.Service;
 
 /**
  * Self-healing locator engine (merged from Autonomous).
- * Uses local Ollama; OpenAI path is handled by AiTestGeneratorService.
+ * Prefers Gemini when configured, falls back to local Ollama.
  */
 @Service
 public class SelfHealingService {
 
     private final OllamaClient ollama;
+    private final GeminiClient gemini;
 
-    public SelfHealingService(OllamaClient ollama) {
+    public SelfHealingService(OllamaClient ollama, GeminiClient gemini) {
         this.ollama = ollama;
+        this.gemini = gemini;
     }
 
     public String healBrokenLocator(String failedLocator, String currentDomSnippet) {
@@ -26,7 +28,16 @@ public class SelfHealingService {
                         + "Do NOT include explanations, greetings, quotes, backticks, or any additional text.",
                 failedLocator, currentDomSnippet);
         try {
-            String raw = ollama.generate(prompt, 0.0);
+            String raw;
+            if (gemini.isConfigured()) {
+                try {
+                    raw = gemini.generate(prompt, 0.0);
+                } catch (Exception geminiEx) {
+                    raw = ollama.generate(prompt, 0.0);
+                }
+            } else {
+                raw = ollama.generate(prompt, 0.0);
+            }
             return cleanLocatorString(raw);
         } catch (Exception e) {
             throw new RuntimeException("Self-healing service failed: " + e.getMessage(), e);

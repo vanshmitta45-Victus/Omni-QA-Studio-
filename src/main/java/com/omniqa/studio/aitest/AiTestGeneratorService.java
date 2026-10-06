@@ -32,20 +32,30 @@ public class AiTestGeneratorService {
     private String model;
 
     private final OllamaClient ollama;
+    private final GeminiClient gemini;
     private final DomExtractorService domExtractorService;
     private final SelfHealingService selfHealingService;
     private final ObjectMapper mapper = new ObjectMapper();
     private final RestClient restClient = RestClient.builder().build();
 
-    public AiTestGeneratorService(OllamaClient ollama, DomExtractorService domExtractorService,
+    public AiTestGeneratorService(OllamaClient ollama, GeminiClient gemini,
+                                  DomExtractorService domExtractorService,
                                   SelfHealingService selfHealingService) {
         this.ollama = ollama;
+        this.gemini = gemini;
         this.domExtractorService = domExtractorService;
         this.selfHealingService = selfHealingService;
     }
 
     public String generateSeleniumTest(String domSnippet, String userInstruction) {
         String prompt = buildPrompt(userInstruction, domSnippet);
+        if (gemini.isConfigured()) {
+            try {
+                return extractJavaCode(gemini.generate(prompt, 0.1));
+            } catch (Exception ex) {
+                logger.warn("Gemini generation failed, trying OpenAI: {}", ex.getMessage());
+            }
+        }
         if (StringUtils.hasText(apiKey)) {
             try {
                 return extractJavaCode(callOpenAi(prompt, 0.1));
@@ -57,7 +67,7 @@ public class AiTestGeneratorService {
             return extractJavaCode(ollama.generate(prompt, 0.1));
         } catch (Exception e) {
             throw new RuntimeException("LLM generation failed: " + e.getMessage()
-                    + ". Set AI_API_KEY or ensure Ollama is running with model '"
+                    + ". Set GEMINI_API_KEY or AI_API_KEY, or ensure Ollama is running with model '"
                     + ollama.getModel() + "'.", e);
         }
     }
@@ -91,7 +101,14 @@ public class AiTestGeneratorService {
                 errorMessage != null ? errorMessage : "Compilation or runtime failure", healed);
         try {
             String fixed;
-            if (StringUtils.hasText(apiKey)) {
+            if (gemini.isConfigured()) {
+                try {
+                    fixed = extractJavaCode(gemini.generate(prompt, 0.1));
+                } catch (Exception geminiEx) {
+                    logger.warn("Gemini fix failed, trying OpenAI: {}", geminiEx.getMessage());
+                    fixed = extractJavaCode(callOpenAi(prompt, 0.1));
+                }
+            } else if (StringUtils.hasText(apiKey)) {
                 try {
                     fixed = extractJavaCode(callOpenAi(prompt, 0.1));
                 } catch (Exception openAiEx) {

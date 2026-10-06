@@ -79,6 +79,12 @@ ollama:
   base-url: ${OLLAMA_BASE_URL:http://localhost:11434}
   model: ${OLLAMA_MODEL:llama3.2}
 
+# Google Gemini (free tier) — first choice when GEMINI_API_KEY is set.
+# GEMINI_API_KEY wins; otherwise AI_PROVIDER is accepted if it holds a key.
+gemini:
+  api-key: ${GEMINI_API_KEY:}
+  model: ${GEMINI_MODEL:gemini-3.8-flash}
+
 # CORS + async hardening (override via env in prod)
 app:
   cors:

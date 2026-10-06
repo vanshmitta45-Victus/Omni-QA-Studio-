@@ -2,6 +2,7 @@ package com.omniqa.studio.service;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.omniqa.studio.aitest.GeminiClient;
 import com.omniqa.studio.dto.CodeAnalysisRequest;
 import com.omniqa.studio.dto.CodeAnalysisResponse;
 import org.slf4j.Logger;
@@ -35,6 +36,11 @@ public class AiCodeAnalyzerService {
 
     private final ObjectMapper objectMapper = new ObjectMapper();
     private final RestClient restClient = RestClient.builder().build();
+    private final GeminiClient gemini;
+
+    public AiCodeAnalyzerService(GeminiClient gemini) {
+        this.gemini = gemini;
+    }
 
     /**
      * Analyzes buggy code, refactors it into corrected code, and generates a beginner-friendly explanation.
@@ -55,7 +61,14 @@ public class AiCodeAnalyzerService {
                     .build();
         }
 
-        // 1. If LLM API key is provided, attempt call to configured LLM
+        // 1. Gemini (free tier) first, then OpenAI-compatible LLM
+        if (gemini.isConfigured()) {
+            try {
+                return callGeminiApi(code, language, context);
+            } catch (Exception ex) {
+                logger.warn("Gemini call failed ({}), trying OpenAI-compatible LLM", ex.getMessage());
+            }
+        }
         if (StringUtils.hasText(apiKey)) {
             try {
                 return callLlmApi(code, language, context);
@@ -66,6 +79,57 @@ public class AiCodeAnalyzerService {
 
         // 2. Intelligent Built-in Fallback Analyzer
         return performBuiltInAnalysis(code, language, context);
+    }
+
+    private CodeAnalysisResponse callGeminiApi(String code, String language, String context) throws Exception {
+        String prompt = """
+                You are OmniQA Studio's Senior QA & AI Code Intelligence engine.
+                Analyze the provided code snippet and context (error message or test failure).
+                Detect all bugs, logic flaws, off-by-one errors, null pointer exceptions, and security risks.
+                Refactor the snippet into clean, robust, corrected code.
+                Provide a simple, beginner-friendly explanation of what was broken and how it was fixed.
+
+                You must return a valid JSON object matching this schema:
+                {
+                  "fixedCode": "<corrected code string>",
+                  "explanation": "<beginner-friendly explanation of why it failed and how it was fixed>",
+                  "issuesFound": ["<issue 1>", "<issue 2>"],
+                  "diffSummary": "<brief summary of code modifications>"
+                }
+                Do not include markdown code block formatting around the json. Return raw JSON only.
+                """
+                + "\nLanguage: " + language + "\nContext: " + context + "\n\nCode:\n" + code;
+
+        String answer = gemini.generate(prompt, 0.2);
+        if (answer.contains("```json")) {
+            answer = answer.substring(answer.indexOf("```json") + 7);
+            answer = answer.substring(0, answer.lastIndexOf("```")).trim();
+        } else if (answer.contains("```")) {
+            answer = answer.substring(answer.indexOf("```") + 3);
+            answer = answer.substring(0, answer.lastIndexOf("```")).trim();
+        }
+
+        JsonNode parsed = objectMapper.readTree(answer);
+        String fixedCode = parsed.path("fixedCode").asText(code);
+        String explanation = parsed.path("explanation").asText("Code analyzed and refactored by OmniQA AI.");
+        String diffSummary = parsed.path("diffSummary").asText("Refactored code with safety checks and clean syntax.");
+
+        List<String> issues = new ArrayList<>();
+        JsonNode issuesNode = parsed.path("issuesFound");
+        if (issuesNode.isArray()) {
+            for (JsonNode issue : issuesNode) {
+                issues.add(issue.asText());
+            }
+        }
+
+        return CodeAnalysisResponse.builder()
+                .originalCode(code)
+                .fixedCode(fixedCode)
+                .explanation(explanation)
+                .language(language)
+                .issuesFound(issues)
+                .diffSummary(diffSummary)
+                .build();
     }
 
     private CodeAnalysisResponse callLlmApi(String code, String language, String context) throws Exception {
