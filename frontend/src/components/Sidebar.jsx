@@ -1,6 +1,6 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
-import { LayoutDashboard, MessageSquare, Users, FlaskConical, LogOut, ShieldCheck, Terminal, Zap, ChevronsLeft, ChevronsRight, X } from 'lucide-react';
+import { LayoutDashboard, MessageSquare, Users, FlaskConical, LogOut, ShieldCheck, Terminal, ChevronsLeft, ChevronsRight, X } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
 export const Sidebar = ({ collapsed = false, onToggle, mobileOpen = false, onCloseMobile }) => {
@@ -19,47 +19,34 @@ export const Sidebar = ({ collapsed = false, onToggle, mobileOpen = false, onClo
         fixed inset-y-0 left-0 w-[268px] ${mobileOpen ? 'translate-x-0' : '-translate-x-full'}
         md:sticky md:top-0 md:translate-x-0 ${collapsed ? 'md:w-[76px]' : 'md:w-[268px]'}`}
     >
-      {/* Brand */}
-      <div className={`p-5 pb-4 flex items-center gap-3 ${collapsed ? 'md:flex-col md:gap-2 md:p-4' : ''}`}>
+      {/* Brand + collapse toggle */}
+      <div className={`p-5 pb-4 flex items-center gap-3 ${collapsed ? 'md:flex-col md:gap-3 md:p-4' : ''}`}>
         <div className="relative shrink-0">
           <div className="w-11 h-11 rounded-2xl bg-gradient-to-tr from-sky-400 via-blue-600 to-violet-600 flex items-center justify-center text-white shadow-glow">
             <Terminal className="w-5 h-5" />
           </div>
           <span className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full bg-emerald-400 border-2 border-white" />
         </div>
-        <div className={`min-w-0 ${collapsed ? 'md:hidden' : ''}`}>
+        <div className={`min-w-0 flex-1 ${collapsed ? 'md:hidden' : ''}`}>
           <h1 className="font-display font-bold text-[17px] text-slate-900 leading-tight tracking-tight">OmniQA Studio</h1>
           <p className="text-[11px] font-bold tracking-[0.18em] uppercase bg-gradient-to-r from-sky-600 to-fuchsia-600 bg-clip-text text-transparent">Future QA Suite</p>
         </div>
         {/* Mobile close */}
         <button
           onClick={onCloseMobile}
-          className="ml-auto md:hidden p-2 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg"
+          className="md:hidden p-2 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg"
           title="Close menu"
         >
           <X className="w-4 h-4" />
         </button>
-        {/* Desktop collapse toggle */}
+        {/* Desktop minimize / maximize */}
         <button
           onClick={onToggle}
-          className={`hidden md:flex ml-auto p-1.5 text-slate-400 hover:text-sky-600 hover:bg-sky-50 rounded-lg transition-colors ${collapsed ? 'md:ml-0' : ''}`}
-          title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+          className="hidden md:flex p-1.5 text-slate-400 hover:text-sky-600 hover:bg-sky-50 rounded-lg transition-colors shrink-0"
+          title={collapsed ? 'Maximize sidebar' : 'Minimize sidebar'}
         >
           {collapsed ? <ChevronsRight className="w-4 h-4" /> : <ChevronsLeft className="w-4 h-4" />}
         </button>
-      </div>
-
-      {/* Usage pulse */}
-      <div className={`mx-5 mb-4 rounded-2xl border border-sky-100 bg-gradient-to-br from-sky-50 via-white to-violet-50 p-3.5 shadow-sm ${collapsed ? 'md:hidden' : ''}`}>
-        <div className="flex items-center gap-2 text-xs font-bold text-slate-700">
-          <Zap className="w-3.5 h-3.5 text-amber-500" />
-          Pipeline pulse
-          <span className="ml-auto text-[10px] font-mono text-emerald-600">● live</span>
-        </div>
-        <div className="mt-2.5 h-1.5 rounded-full bg-slate-200/80 overflow-hidden">
-          <div className="h-full w-3/4 rounded-full bg-gradient-to-r from-sky-400 via-blue-500 to-violet-500" />
-        </div>
-        <p className="mt-2 text-[11px] text-slate-500">74% suites green in last 24h</p>
       </div>
 
       {/* Nav */}
