@@ -371,7 +371,7 @@ export const CollaborationHub = () => {
   };
 
   return (
-    <div className="flex h-[calc(100vh-0px)] overflow-hidden relative">
+    <div className="flex h-[calc(100dvh-92px)] md:h-[calc(100vh-0px)] overflow-hidden relative">
       {/* Channels Sidebar (overlay drawer on mobile) */}
       <div className={`bg-white/95 border-r border-slate-200 flex-col absolute inset-y-0 left-0 z-20 w-72 max-w-[85vw] shadow-xl ${listOpen ? 'flex' : 'hidden'} md:static md:z-auto md:flex md:w-80 md:shadow-none`}>
         <div className="p-4 border-b border-slate-200 flex items-center justify-between">
