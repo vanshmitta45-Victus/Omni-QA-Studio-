@@ -29,6 +29,7 @@ export const CollaborationHub = () => {
   const [groupModal, setGroupModal] = useState(false);
   const [dmModal, setDmModal] = useState(false);
   const [infoOpen, setInfoOpen] = useState(false);
+  const [listOpen, setListOpen] = useState(false);
   const [newGroupName, setNewGroupName] = useState('');
   const [newGroupDesc, setNewGroupDesc] = useState('');
   const [createType, setCreateType] = useState('GROUP');
@@ -98,6 +99,7 @@ export const CollaborationHub = () => {
     setReplyTo(null);
     setSearch('');
     setInfoOpen(false);
+    setListOpen(false);
     setUnread((prev) => ({ ...prev, [slug]: 0 }));
     localStorage.setItem(lastSeenKey(slug), String(Date.now()));
     setMessagesByRoom((prev) => {
@@ -369,15 +371,22 @@ export const CollaborationHub = () => {
   };
 
   return (
-    <div className="flex h-[calc(100vh-0px)] overflow-hidden">
-      {/* Channels Sidebar */}
-      <div className="w-80 bg-white/80 border-r border-slate-200 flex flex-col">
+    <div className="flex h-[calc(100vh-0px)] overflow-hidden relative">
+      {/* Channels Sidebar (overlay drawer on mobile) */}
+      <div className={`bg-white/95 border-r border-slate-200 flex-col absolute inset-y-0 left-0 z-20 w-72 max-w-[85vw] shadow-xl ${listOpen ? 'flex' : 'hidden'} md:static md:z-auto md:flex md:w-80 md:shadow-none`}>
         <div className="p-4 border-b border-slate-200 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Users className="w-5 h-5 text-sky-500" />
             <h2 className="font-bold text-slate-900 text-base">Team Channels</h2>
           </div>
-          <span className={`inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-full font-bold border ${
+          <button
+            onClick={() => setListOpen(false)}
+            className="md:hidden p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg"
+            title="Close"
+          >
+            <X className="w-4 h-4" />
+          </button>
+          <span className={`hidden md:inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-full font-bold border ${
             connected ? 'bg-emerald-50 text-emerald-600 border-emerald-200' : 'bg-rose-50 text-rose-600 border-rose-200'
           }`}>
             <span className={`w-1.5 h-1.5 rounded-full ${connected ? 'bg-emerald-400 animate-pulse' : 'bg-rose-400'}`} />
@@ -443,7 +452,15 @@ export const CollaborationHub = () => {
       <div className="flex-1 flex flex-col bg-white/60 min-w-0">
         {/* Room Header */}
         <div className="p-4 border-b border-slate-200 bg-white/80 flex items-center justify-between gap-3">
-          <button onClick={() => activeRoom && setInfoOpen(true)} className="text-left min-w-0" title="Chat info">
+          <div className="flex items-center gap-2 min-w-0">
+            <button
+              onClick={() => setListOpen(true)}
+              className="md:hidden p-2 text-slate-500 hover:text-sky-600 hover:bg-sky-50 border border-slate-200 rounded-xl shrink-0"
+              title="Channels"
+            >
+              <Users className="w-4 h-4" />
+            </button>
+            <button onClick={() => activeRoom && setInfoOpen(true)} className="text-left min-w-0" title="Chat info">
             <h2 className="text-base font-bold text-slate-900 flex items-center gap-2 truncate">
               <MessageSquare className="w-4 h-4 text-violet-500 shrink-0" />
               <span className="truncate">{activeRoom ? roomLabel(activeRoom) : activeSlug}</span>
@@ -452,6 +469,7 @@ export const CollaborationHub = () => {
               {activeRoom?.type === 'GROUP' ? `${(activeRoom.members || []).length} members — click for info` : activeRoom?.type === 'CHANNEL' ? 'Open channel — click for info' : activeRoom?.description}
             </p>
           </button>
+          </div>
           <div className="flex items-center gap-2 shrink-0">
             <div className="relative">
               <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
@@ -459,7 +477,7 @@ export const CollaborationHub = () => {
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder="Search messages..."
-                className="pl-8 pr-3 py-1.5 text-xs bg-slate-50 border border-slate-200 rounded-xl w-40 focus:outline-none focus:ring-2 focus:ring-sky-400"
+                className="pl-8 pr-3 py-1.5 text-xs bg-slate-50 border border-slate-200 rounded-xl w-24 sm:w-40 focus:outline-none focus:ring-2 focus:ring-sky-400"
               />
             </div>
             <button
@@ -468,13 +486,13 @@ export const CollaborationHub = () => {
               className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-semibold text-amber-700 bg-amber-50 hover:bg-amber-100 border border-amber-200 transition-all"
             >
               <StickyNote className="w-4 h-4" />
-              Notes
+              <span className="hidden sm:inline">Notes</span>
             </button>
           </div>
         </div>
 
         {/* Messages Stream */}
-        <div className="flex-1 p-6 overflow-y-auto space-y-4">
+        <div className="flex-1 p-3 md:p-6 overflow-y-auto space-y-4">
           {visibleMessages.length === 0 ? (
             <div className="h-full flex flex-col items-center justify-center text-slate-500 space-y-2">
               <MessageSquare className="w-10 h-10 opacity-30" />
@@ -702,7 +720,7 @@ function ChatInfoDrawer({ room, users, isAdmin, currentUserId, onClose, onAdd, o
   const canDelete = isCreator || isAdmin;
 
   return (
-    <div className="w-80 shrink-0 bg-white border-l border-slate-200 flex flex-col">
+    <div className="absolute inset-y-0 right-0 z-20 w-80 max-w-[90vw] bg-white border-l border-slate-200 flex flex-col shadow-xl md:static md:shadow-none">
       <div className="p-4 border-b border-slate-200 flex items-center gap-2">
         <button onClick={onClose} className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg">
           <ChevronLeft className="w-4 h-4" />

@@ -1,7 +1,7 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
 import { Sidebar } from './Sidebar';
-import { Search } from 'lucide-react';
+import { Search, Menu } from 'lucide-react';
 
 const titles = {
   '/': { kicker: 'Mission Control', title: 'QA Intelligence Dashboard' },
@@ -15,10 +15,35 @@ const titles = {
 export const Layout = () => {
   const { pathname } = useLocation();
   const meta = titles[pathname] || { kicker: 'OmniQA', title: 'Studio' };
+  const [collapsed, setCollapsed] = useState(() => localStorage.getItem('sidebar_collapsed') === '1');
+  const [mobileOpen, setMobileOpen] = useState(false);
+
+  const toggleCollapsed = () => {
+    setCollapsed((c) => {
+      localStorage.setItem('sidebar_collapsed', c ? '0' : '1');
+      return !c;
+    });
+  };
+
+  // Auto-close the mobile drawer on navigation
+  useEffect(() => {
+    setMobileOpen(false);
+  }, [pathname]);
 
   return (
     <div className="flex min-h-screen aurora-bg text-slate-900">
-      <Sidebar />
+      <Sidebar
+        collapsed={collapsed}
+        onToggle={toggleCollapsed}
+        mobileOpen={mobileOpen}
+        onCloseMobile={() => setMobileOpen(false)}
+      />
+      {mobileOpen && (
+        <div
+          className="fixed inset-0 z-30 bg-slate-900/40 backdrop-blur-sm md:hidden"
+          onClick={() => setMobileOpen(false)}
+        />
+      )}
       <div className="flex-1 flex flex-col min-w-0 relative">
         {/* Ambient art */}
         <div className="pointer-events-none absolute inset-0 overflow-hidden">
@@ -28,8 +53,15 @@ export const Layout = () => {
         </div>
 
         {/* Topbar */}
-        <header className="relative z-10 flex items-center gap-4 px-8 pt-6">
-          <h1 className="font-display text-xl font-bold text-slate-900 tracking-tight truncate">
+        <header className="relative z-10 flex items-center gap-3 px-4 md:px-8 pt-4 md:pt-6">
+          <button
+            onClick={() => setMobileOpen(true)}
+            className="md:hidden p-2.5 glass border border-slate-200 rounded-xl text-slate-600 shadow-sm"
+            title="Open menu"
+          >
+            <Menu className="w-4 h-4" />
+          </button>
+          <h1 className="font-display text-lg md:text-xl font-bold text-slate-900 tracking-tight truncate">
             {meta.title}
           </h1>
           <div className="ml-auto flex items-center gap-3">
