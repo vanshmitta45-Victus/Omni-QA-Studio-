@@ -1,0 +1,39 @@
+target/
+uploads/*
+!uploads/.gitkeep
+!.mvn/wrapper/maven-wrapper.jar
+frontend/node_modules/
+frontend/dist/
+gateway/target/
+automation-engine/target/
+
+### STS ###
+.apt_generated
+.classpath
+.factorypath
+.project
+.settings
+.springBeans
+.sts4-cache
+
+### IntelliJ IDEA ###
+.idea
+*.iws
+*.iml
+*.ipr
+
+### NetBeans ###
+/nbproject/private/
+/nbbuild/
+/dist/
+/nbproject/load-context.properties
+/nbproject/private/
+/build/
+
+### VS Code ###
+.vscode/
+
+### Secrets and Environment ###
+.env
+.env.local
+*.log

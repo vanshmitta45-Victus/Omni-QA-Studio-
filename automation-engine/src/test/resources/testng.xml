@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE suite SYSTEM "https://testng.org/testng-1.0.dtd">
+<suite name="OmniQA Studio Enterprise Automation Suite" parallel="classes" thread-count="3" verbose="2">
+
+    <!-- Global Listeners: Automated Backend Result and Screenshot Reporter -->
+    <listeners>
+        <listener class-name="com.omniqa.automation.reporter.OmniQaTestReporter"/>
+    </listeners>
+
+    <!-- UI Cross-Browser Test Suite (Chrome Headless) -->
+    <test name="Chrome UI Regression" preserve-order="true">
+        <parameter name="browser" value="chrome"/>
+        <parameter name="headless" value="true"/>
+        <classes>
+            <class name="com.omniqa.automation.tests.LoginUiTest"/>
+        </classes>
+    </test>
+
+    <!-- Hybrid REST Assured + Selenium Fast Pipeline -->
+    <test name="Hybrid API and UI Regression" preserve-order="true">
+        <parameter name="browser" value="chrome"/>
+        <parameter name="headless" value="true"/>
+        <classes>
+            <class name="com.omniqa.automation.tests.HybridApiUiTest"/>
+        </classes>
+    </test>
+
+    <!-- Cucumber BDD Feature Scenarios Suite -->
+    <test name="Cucumber BDD Workflows" preserve-order="true">
+        <classes>
+            <class name="com.omniqa.automation.runners.CucumberTestRunner"/>
+        </classes>
+    </test>
+
+</suite>

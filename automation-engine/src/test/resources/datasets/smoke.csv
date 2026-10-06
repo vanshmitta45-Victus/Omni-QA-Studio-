@@ -1,0 +1,3 @@
+case,url,expected
+smoke,http://localhost:3000,200
+login,http://localhost:3000/login,200

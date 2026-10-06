@@ -1,0 +1,38 @@
+services:
+  backend:
+    build: .
+    ports:
+      - "8080:8080"
+    environment:
+      SPRING_PROFILES_ACTIVE: default
+      CORS_ALLOWED_ORIGINS: http://localhost:5173,http://localhost:3000
+      BACKEND_URL: http://backend:8080
+      SERVICE_API_KEY: ${SERVICE_API_KEY:-}
+      REDIS_ENABLED: "true"
+      SPRING_DATA_REDIS_HOST: redis
+      SPRING_DATA_REDIS_PORT: 6379
+    depends_on:
+      - redis
+  gateway:
+    build: ./gateway
+    ports:
+      - "8081:8081"
+    environment:
+      BACKEND_URL: http://backend:8080
+      BACKEND_WS_URL: ws://backend:8080
+      CORS_ALLOWED_ORIGINS: http://localhost:5173,http://localhost:3000
+      SPRING_DATA_REDIS_HOST: redis
+    depends_on:
+      - backend
+      - redis
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+  frontend:
+    build: ./frontend
+    ports:
+      - "5173:80"
+    environment:
+      VITE_API_URL: http://localhost:8081/api
+      VITE_WS_URL: http://localhost:8081/ws

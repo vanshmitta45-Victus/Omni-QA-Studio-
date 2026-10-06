@@ -1,0 +1,29 @@
+server:
+  port: ${PORT:8081}
+
+spring:
+  data:
+    redis:
+      host: ${SPRING_DATA_REDIS_HOST:localhost}
+      port: ${SPRING_DATA_REDIS_PORT:6379}
+  cloud:
+    gateway:
+      routes:
+        - id: backend-api
+          uri: ${BACKEND_URL:http://localhost:8080}
+          predicates:
+            - Path=/api/**
+        - id: backend-ws
+          uri: ${BACKEND_WS_URL:ws://localhost:8080}
+          predicates:
+            - Path=/ws/**,/ws-raw/**
+      default-filters:
+        - name: RequestRateLimiter
+          args:
+            redis-rate-limiter.replenishRate: 120
+            redis-rate-limiter.burstCapacity: 200
+            key-resolver: "#{@remoteAddrKeyResolver}"
+
+app:
+  cors:
+    allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:5173,http://localhost:3000}
