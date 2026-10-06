@@ -1,7 +1,7 @@
 import React from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
 import { Sidebar } from './Sidebar';
-import { Search, Bell, Activity } from 'lucide-react';
+import { Search } from 'lucide-react';
 
 const titles = {
   '/': { kicker: 'Mission Control', title: 'QA Intelligence Dashboard' },
@@ -29,12 +29,9 @@ export const Layout = () => {
 
         {/* Topbar */}
         <header className="relative z-10 flex items-center gap-4 px-8 pt-6">
-          <div className="min-w-0">
-            <p className="text-[11px] font-bold uppercase tracking-[0.22em] text-sky-600">{meta.kicker}</p>
-            <h1 className="font-display text-xl font-bold text-slate-900 tracking-tight truncate">
-              {meta.title}
-            </h1>
-          </div>
+          <h1 className="font-display text-xl font-bold text-slate-900 tracking-tight truncate">
+            {meta.title}
+          </h1>
           <div className="ml-auto flex items-center gap-3">
             <label className="hidden md:flex items-center gap-2 glass border border-slate-200 rounded-xl px-3.5 py-2 text-sm text-slate-500 w-64 focus-within:border-sky-400 transition-colors shadow-sm">
               <Search className="w-4 h-4" />
@@ -44,14 +41,6 @@ export const Layout = () => {
               />
               <kbd className="text-[10px] font-mono bg-slate-100 border border-slate-200 rounded px-1.5 py-0.5 text-slate-500">⌘K</kbd>
             </label>
-            <span className="hidden sm:inline-flex items-center gap-1.5 text-[11px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-full px-3 py-1.5 shadow-sm">
-              <Activity className="w-3.5 h-3.5 animate-pulse-soft" />
-              All systems live
-            </span>
-            <button className="relative p-2.5 glass border border-slate-200 rounded-xl text-slate-500 hover:text-slate-900 hover:border-sky-300 transition-all shadow-sm" title="Notifications">
-              <Bell className="w-4 h-4" />
-              <span className="absolute top-2 right-2 w-2 h-2 rounded-full bg-gradient-to-r from-rose-400 to-orange-400 shadow-glow" />
-            </button>
           </div>
         </header>
 

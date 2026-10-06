@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { FlaskConical, Sparkles, Rocket, Code2, ShieldAlert, Terminal, BookOpen } from 'lucide-react';
+import { Sparkles, Rocket, Code2, ShieldAlert, Terminal, BookOpen } from 'lucide-react';
 import GeneratorTab from '../components/aitest/GeneratorTab';
 import HealingTab from '../components/aitest/HealingTab';
 import RunnerTab from '../components/aitest/RunnerTab';
@@ -70,29 +70,8 @@ export function AiLab() {
     setActiveTab('runner');
   };
 
-  const active = TABS.find((t) => t.id === activeTab);
-
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-center gap-3">
-        <div className="w-11 h-11 rounded-2xl bg-gradient-to-tr from-indigo-500 via-purple-600 to-emerald-500 flex items-center justify-center text-white shadow-glow">
-          <FlaskConical className="w-5 h-5" />
-        </div>
-        <div className="min-w-0">
-          <h1 className="text-xl font-bold text-slate-900 tracking-tight">AI Test Lab</h1>
-          <p className="text-sm text-slate-500">{active?.hint}</p>
-        </div>
-      </div>
-
-      <div className="flex items-center gap-2 text-xs text-slate-500 bg-white/70 border border-slate-200 rounded-xl px-4 py-2.5">
-        <span className="font-bold text-slate-700">How it flows:</span>
-        <span>Generate Tests <span className="text-slate-300 mx-1">→</span> Smart Test Runs / Run Sandbox</span>
-        <span className="text-slate-300">•</span>
-        <span>broken? Fix Code / Fix Locators</span>
-        <span className="text-slate-300">•</span>
-        <span>everything lands in History</span>
-      </div>
-
       <div className="flex flex-wrap gap-2">
         {TABS.map((tab) => {
           const Icon = tab.icon;
