@@ -55,7 +55,8 @@ public class AiTestController {
                 return ResponseEntity.badRequest().body("Error: Test instructions must not be blank.");
             }
             String dom = domExtractorService.extractCleanDom(request.url().trim());
-            String generatedCode = aiTestGeneratorService.generateSeleniumTest(dom, request.instruction().trim());
+            String generatedCode = aiTestGeneratorService.generateSeleniumTest(
+                    dom, request.instruction().trim(), request.url().trim());
             return ResponseEntity.ok(generatedCode);
         } catch (Exception e) {
             return ResponseEntity.badRequest().body("Generation Error: " + e.getMessage());

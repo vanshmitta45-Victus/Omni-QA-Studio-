@@ -36,12 +36,55 @@ public class SelfHealingService {
                     raw = ollama.generate(prompt, 0.0);
                 }
             } else {
-                raw = ollama.generate(prompt, 0.0);
+                try {
+                    raw = ollama.generate(prompt, 0.0);
+                } catch (Exception ollamaEx) {
+                    // Keyless offline path: fuzzy-match attributes in the live DOM.
+                    String healed = healHeuristically(failedLocator, currentDomSnippet);
+                    if (healed != null) return healed;
+                    throw ollamaEx;
+                }
             }
             return cleanLocatorString(raw);
         } catch (Exception e) {
+            String healed = healHeuristically(failedLocator, currentDomSnippet);
+            if (healed != null) return healed;
             throw new RuntimeException("Self-healing service failed: " + e.getMessage(), e);
         }
+    }
+
+    /**
+     * Offline fallback: finds a live element resembling the broken locator —
+     * same id fragment, name, or visible text — and returns a fresh selector.
+     */
+    static String healHeuristically(String failedLocator, String currentDomSnippet) {
+        if (failedLocator == null || failedLocator.isBlank()
+                || currentDomSnippet == null || currentDomSnippet.isBlank()) return null;
+        try {
+            org.jsoup.nodes.Document doc = org.jsoup.Jsoup.parse(currentDomSnippet);
+            String hint = failedLocator.replaceAll("^(//|#|\\.|css=|xpath=)", "").trim();
+            String token = hint.replaceAll("[^A-Za-z0-9_\\- ]", " ").trim().split("\\s+")[0];
+            if (!token.isEmpty()) {
+                for (org.jsoup.nodes.Element el : doc.getAllElements()) {
+                    for (String attr : new String[]{"id", "name", "aria-label", "placeholder", "class"}) {
+                        String val = el.attr(attr);
+                        if (val != null && !val.isBlank()
+                                && val.toLowerCase().contains(token.toLowerCase())) {
+                            if ("id".equals(attr)) return "#" + val.trim().split("\\s+")[0];
+                            if ("name".equals(attr)) return "[name='" + val.trim() + "']";
+                            return el.tagName() + "." + val.trim().split("\\s+")[0];
+                        }
+                    }
+                    if (el.ownText() != null && el.ownText().toLowerCase().contains(token.toLowerCase())
+                            && ("button".equals(el.tagName()) || "a".equals(el.tagName()))) {
+                        return "//" + el.tagName() + "[contains(text(),'" + el.ownText().trim().replace("'", "") + "')]";
+                    }
+                }
+            }
+            org.jsoup.nodes.Element submit = doc.selectFirst("button[type=submit], input[type=submit]");
+            if (submit != null && submit.hasAttr("id")) return "#" + submit.attr("id");
+        } catch (Exception ignored) {}
+        return null;
     }
 
     private String cleanLocatorString(String raw) {

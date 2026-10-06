@@ -47,7 +47,7 @@ public class AiTestGeneratorService {
         this.selfHealingService = selfHealingService;
     }
 
-    public String generateSeleniumTest(String domSnippet, String userInstruction) {
+    public String generateSeleniumTest(String domSnippet, String userInstruction, String targetUrl) {
         String prompt = buildPrompt(userInstruction, domSnippet);
         if (gemini.isConfigured()) {
             try {
@@ -65,11 +65,121 @@ public class AiTestGeneratorService {
         }
         try {
             return extractJavaCode(ollama.generate(prompt, 0.1));
-        } catch (Exception e) {
-            throw new RuntimeException("LLM generation failed: " + e.getMessage()
-                    + ". Set GEMINI_API_KEY or AI_API_KEY, or ensure Ollama is running with model '"
-                    + ollama.getModel() + "'.", e);
+        } catch (Exception ex) {
+            logger.warn("Ollama generation failed, using offline DOM template: {}", ex.getMessage());
         }
+        // Keyless offline path: build a runnable test from the real DOM structure.
+        return templateFromDom(domSnippet, userInstruction, targetUrl);
+    }
+
+    /**
+     * Offline fallback: parses the extracted DOM and emits a compilable
+     * JUnit 5 + Selenium test — fills text fields, picks dropdown options,
+     * clicks the submit button, and asserts quoted phrases from the
+     * instruction when present. No LLM needed.
+     */
+    private String templateFromDom(String domSnippet, String userInstruction, String targetUrl) {
+        String url = StringUtils.hasText(targetUrl) ? targetUrl : "https://example.com";
+        StringBuilder b = new StringBuilder();
+        b.append("import org.junit.jupiter.api.AfterEach;\n")
+         .append("import org.junit.jupiter.api.BeforeEach;\n")
+         .append("import org.junit.jupiter.api.Test;\n")
+         .append("import org.openqa.selenium.By;\n")
+         .append("import org.openqa.selenium.WebDriver;\n")
+         .append("import org.openqa.selenium.WebElement;\n")
+         .append("import org.openqa.selenium.chrome.ChromeDriver;\n")
+         .append("import org.openqa.selenium.chrome.ChromeOptions;\n")
+         .append("import org.openqa.selenium.support.ui.Select;\n")
+         .append("import java.time.Duration;\n")
+         .append("import java.util.List;\n")
+         .append("import static org.junit.jupiter.api.Assertions.*;\n\n")
+         .append("// Offline-generated (no LLM key configured). Instruction: ")
+         .append(userInstruction.replace("\n", " ")).append("\n")
+         .append("public class GeneratedWebTest {\n")
+         .append("    private WebDriver driver;\n\n")
+         .append("    @BeforeEach\n")
+         .append("    public void setup() {\n")
+         .append("        ChromeOptions options = new ChromeOptions();\n")
+         .append("        options.addArguments(\"--headless=new\", \"--no-sandbox\", \"--disable-gpu\");\n")
+         .append("        driver = new ChromeDriver(options);\n")
+         .append("        driver.manage().timeouts().implicitlyWait(Duration.ofSeconds(10));\n")
+         .append("    }\n\n")
+         .append("    @AfterEach\n")
+         .append("    public void tearDown() {\n")
+         .append("        if (driver != null) {\n")
+         .append("            driver.quit();\n")
+         .append("        }\n")
+         .append("    }\n\n")
+         .append("    @Test\n")
+         .append("    public void generatedScenario() {\n")
+         .append("        driver.get(\"").append(url.replace("\"", "")).append("\");\n");
+
+        try {
+            org.jsoup.nodes.Document doc = org.jsoup.Jsoup.parse(domSnippet == null ? "" : domSnippet);
+            for (org.jsoup.nodes.Element input : doc.select("input[type=text], input[type=email], input:not([type])")) {
+                String by = firstLocator(input);
+                if (by == null) continue;
+                String sample = input.attr("name").toLowerCase().contains("email") ? "test@example.com"
+                        : input.attr("name").toLowerCase().contains("user") ? "student" : "test-value";
+                b.append("        driver.findElement(").append(by).append(").sendKeys(\"").append(sample).append("\");\n");
+            }
+            for (org.jsoup.nodes.Element input : doc.select("input[type=password]")) {
+                String by = firstLocator(input);
+                if (by == null) continue;
+                b.append("        driver.findElement(").append(by).append(").sendKeys(\"Password123\");\n");
+            }
+            for (org.jsoup.nodes.Element select : doc.select("select")) {
+                String by = firstLocator(select);
+                if (by == null) continue;
+                b.append("        new Select(driver.findElement(").append(by).append(")).selectByIndex(1);\n");
+            }
+            for (org.jsoup.nodes.Element box : doc.select("input[type=checkbox]:not([checked])")) {
+                String by = firstLocator(box);
+                if (by == null) continue;
+                b.append("        driver.findElement(").append(by).append(").click();\n");
+                break;
+            }
+            org.jsoup.nodes.Element submit = doc.selectFirst("button[type=submit], input[type=submit], button:containsOwn(Submit), button:containsOwn(Sign), button:containsOwn(Login)");
+            if (submit != null) {
+                String by = firstLocator(submit);
+                if (by != null) {
+                    b.append("        driver.findElement(").append(by).append(").click();\n");
+                }
+            }
+        } catch (Exception ex) {
+            logger.warn("DOM template walk failed, emitting smoke skeleton: {}", ex.getMessage());
+        }
+
+        java.util.regex.Matcher quoted =
+                java.util.regex.Pattern.compile("\"([^\"]{3,80})\"").matcher(userInstruction == null ? "" : userInstruction);
+        if (quoted.find()) {
+            String phrase = quoted.group(1).replace("\"", "'");
+            b.append("        assertTrue(driver.getPageSource().contains(\"").append(phrase).append("\"), \"expected text not found\");\n");
+        } else {
+            b.append("        assertFalse(driver.getTitle() == null || driver.getTitle().isEmpty(), \"page title should load\");\n");
+        }
+        b.append("    }\n}\n");
+        return b.toString();
+    }
+
+    private static String firstLocator(org.jsoup.nodes.Element el) {
+        if (el.hasAttr("id") && !el.attr("id").isBlank()) {
+            return "By.id(\"" + el.attr("id").replace("\"", "'") + "\")";
+        }
+        if (el.hasAttr("name") && !el.attr("name").isBlank()) {
+            return "By.name(\"" + el.attr("name").replace("\"", "'") + "\")";
+        }
+        if (el.hasAttr("class") && !el.attr("class").isBlank()) {
+            String cls = el.attr("class").trim().split("\\s+")[0];
+            if (!cls.isBlank()) {
+                return "By.cssSelector(\"." + cls.replace("\"", "'") + "\")";
+            }
+        }
+        String tag = el.tagName();
+        if ("button".equals(tag) || "input".equals(tag) || "select".equals(tag)) {
+            return "By.cssSelector(\"" + tag + "\")";
+        }
+        return null;
     }
 
     public String fixJavaCode(String brokenCode, String errorMessage) {
